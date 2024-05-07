@@ -1,0 +1,230 @@
+/**
+ * @file sudoku.c
+ * @brief Programme de jeux du SUDOKU.
+ *
+ * @author Joseph Mulliez
+ * @version 1.0
+ * @date 16 novembre 2023
+ *
+ * Ce programme propose de jouer au jeu du SUDOKU.
+ * Il demande un fichier qui contient une grille de jeu
+ * pouvant afficher une grille pré-remplie.
+ * Le programme va ensuite demander à l'utilisateur les coordonnées
+ * d'un emplacement de la grille pour pouvoir remplir une valeur à cet emplacement.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+#define TAILLE 9
+#define N 3
+
+/**
+ * @typedef tGrille
+ * @brief Type représentant une grille de sudoku.
+ *
+ * Permet de créer une grille de 9X9 pouvant ainsi accueillir les valeurs
+ * données par le fichier appelé.
+ */
+typedef int tGrille[TAILLE][TAILLE];
+
+/**
+ * @brief Charge une grille à partir d'un fichier.
+ *
+ * @param g La grille à charger.
+ * @warning Cette fonction assume que le fichier contient une grille valide.
+ * @details Demande le nom du fichier à l'utilisateur, ouvre le fichier en mode lecture binaire,
+ *          lit le contenu du fichier dans la grille, puis ferme le fichier.
+ */
+void chargerGrille(tGrille g) {
+    char nomFichier[30];
+    FILE *f;
+    // demande le nom du fichier à l'utilisateur
+    printf("Nom du fichier ? ");
+    scanf("%s", nomFichier);
+    // Ouvre le fichier en mode lecture binaire
+    f = fopen(nomFichier, "rb");
+    if (f == NULL) {
+        // Affiche un message d'erreur si le fichier n'a pas pu être ouvert
+        printf("\n ERREUR sur le fichier %s\n", nomFichier);
+    } else {
+        // Lit le contenu du fichier dans la grille
+        fread(g, sizeof(int), TAILLE * TAILLE, f);
+    }
+    fclose(f);
+}
+
+/**
+ * @brief Affiche la grille de sudoku.
+ *
+ * @param g La grille à afficher.
+ * @note Les cases vides sont représentées par un point, les chiffres de 1 à 9 représentent les valeurs remplies.
+ * @details Affiche la grille sous forme de tableau avec des lignes et des colonnes numérotées,
+ *          ajoutant des barres verticales et horizontales pour former des blocs de 3x3.
+ */
+void afficherGrille(tGrille g) {
+    int i;
+    i = 1;
+    printf("  ");
+    for ( i=1; i <= TAILLE; i++){
+    printf(" %d ",i);
+    if (i ==3 || i == 6){
+    printf(" ");
+    }
+    }
+    printf("\n");
+    printf(" +---------+---------+---------+\n");
+    for (int i = 0; i < TAILLE; i++) {
+        printf("%d|", i + 1);
+        for (int j = 0; j < TAILLE; j++) {
+            // Affiche le contenu de chaque case de la grille
+            if (g[i][j] == 0) {
+                printf(" . ");
+            } else {
+                printf(" %d ", g[i][j]);
+            }
+            // Ajoute une barre verticale à chaque bloc de 3 colonnes
+            if ((j + 1) % N == 0) {
+                printf("|");
+            }
+        }
+        printf("\n");
+        // Ajoute une ligne horizontale à chaque bloc de 3 lignes
+        if ((i + 1) % N == 0) {
+            printf(" +---------+---------+---------+\n");
+        }
+    }
+}
+
+/**
+ * @brief Saisit une valeur depuis l'entrée standard.
+ *
+ * @param valeur Pointeur vers la variable où stocker la valeur saisie.
+ * @note Cette fonction répète la saisie jusqu'à ce qu'une valeur valide soit entrée.
+ * @details Demande à l'utilisateur de saisir une valeur, vérifie que la saisie est un entier entre 1 et TAILLE,
+ *          affiche un message d'erreur en cas de saisie invalide.
+ */
+void saisir(int *valeur) {
+    char ch[10];
+    int x;
+    do {
+        // Demande à l'utilisateur de saisir une valeur
+        printf("Saisir une valeur : ");
+        scanf("%s", ch);
+        // Vérifie que la saisie est un entier entre 1 et TAILLE
+        if (sscanf(ch, "%d", &x) != 0 && x >= 1 && x <= TAILLE) {
+            *valeur = x;
+            return;
+        } else {
+            // Affiche un message d'erreur en cas de saisie invalide
+            printf("Saisie invalide, entrez une valeur entre 1 et %d : ", TAILLE);
+        }
+    } while (1);
+}
+
+/**
+ * @brief Vérifie si une valeur peut être placée dans une case de la grille.
+ *
+ * @param g La grille de sudoku.
+ * @param numLigne Le numéro de ligne de la case.
+ * @param numColonne Le numéro de colonne de la case.
+ * @param valeur La valeur à vérifier.
+ * @return true si la valeur peut être placée, false sinon.
+ * @note Cette fonction affiche des messages d'erreur en cas d'occupation de la ligne, de la colonne ou du bloc.
+ * @details Vérifie si la valeur est déjà présente sur la ligne ou la colonne, puis dans le même bloc de 3x3.
+ */
+bool possible(tGrille g, int numLigne, int numColonne, int valeur) {
+    for (int i = 0; i < TAILLE; i++) {
+        // Vérifie si la valeur est déjà présente sur la ligne ou la colonne
+        if (g[numLigne][i] == valeur || g[i][numColonne] == valeur) {
+            // Affiche un message d'erreur si la valeur est déjà présente
+            printf("Impossible, la valeur est déjà présente sur la ligne ou la colonne.\n");
+            return false;
+        }
+    }
+
+    int debutLigne = numLigne - numLigne % N;
+    int debutColonne = numColonne - numColonne % N;
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            // Vérifie si la valeur est déjà présente dans le même bloc de 3x3
+            if (g[i + debutLigne][j + debutColonne] == valeur) {
+                // Affiche un message d'erreur si la valeur est déjà présente dans le même bloc
+                printf("Impossible, la valeur est déjà présente dans le même bloc.\n");
+                return false;
+            }
+        }
+    }
+
+    // La valeur peut être placée
+    return true;
+}
+
+/**
+ * @brief Programme principal.
+ *
+ * @return 0 en cas de succès.
+ * @note Le programme demande à l'utilisateur de remplir une grille de sudoku en respectant les règles du jeu.
+ *       Il affiche un message de félicitations lorsque la grille est remplie avec succès.
+ * @details Charge la grille depuis un fichier, affiche la grille, demande les coordonnées et la valeur à l'utilisateur,
+ *          vérifie si la case est libre, puis si la valeur peut être placée, et enfin affiche un message de fin si la grille est pleine.
+ */
+int main() {
+    tGrille grille;
+    int numLigne, numColonne, valeur;
+
+    // Charge la grille depuis un fichier
+    chargerGrille(grille);
+
+    // Boucle principale du jeu
+    while (1) {
+        // Affiche la grille
+        afficherGrille(grille);
+        // Demande à l'utilisateur de saisir le numéro de ligne et de colonne
+        printf("Numéro de ligne de la case ? ");
+        saisir(&numLigne);
+        printf("Numéro de colonne de la case ? ");
+        saisir(&numColonne);
+
+        // Vérifie si la case est déjà occupée
+        if (grille[numLigne - 1][numColonne - 1] != 0) {
+            // Affiche un message d'erreur si la case est déjà occupée
+            printf("IMPOSSIBLE, la case n'est pas libre.\n");
+        } else {
+            // Demande à l'utilisateur de saisir la valeur à insérer
+            printf("Valeur à insérer ? ");
+            saisir(&valeur);
+            // Vérifie si la valeur peut être placée
+            if (possible(grille, numLigne - 1, numColonne - 1, valeur)) {
+                // Place la valeur dans la case si elle est valide
+                grille[numLigne - 1][numColonne - 1] = valeur;
+            }
+        }
+
+        // Vérification grille pleine
+        bool grillePleine = true;
+        for (int i = 0; i < TAILLE; i++) {
+            for (int j = 0; j < TAILLE; j++) {
+                if (grille[i][j] == 0) {
+                    grillePleine = false;
+                    break;
+                }
+            }
+            if (!grillePleine) {
+                break;
+            }
+        }
+
+        // Affiche un message de fin si la grille est pleine
+        if (grillePleine) {
+            printf("################################\n");
+            printf("# grille pleine, fin de partie #\n");
+            printf("################################\n");
+            break;
+        }
+    }
+
+    return 0;
+}
